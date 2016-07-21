@@ -1,0 +1,110 @@
+package org.weatherbee.main
+
+import scala.io.Source
+import org.apache.spark.mllib.regression.LinearRegressionWithSGD
+import org.apache.spark.mllib.regression.LabeledPoint
+import org.apache.spark.mllib.linalg.Vectors
+import org.apache.spark.SparkConf
+import org.apache.spark.SparkContext
+import org.apache.spark.mllib.feature.StandardScaler
+import java.util.Date
+
+object RunMe {
+
+  def main(args: Array[String]) {
+    
+    println(System.currentTimeMillis()+" --> 1469108491378")
+    System.exit(0)
+    
+     val sc = new SparkContext(new SparkConf().setAppName("Weather linear regression SGD").setMaster("local"))
+    val locations = Array[String]("adl", "mel", "syd")
+    val latitudes = Array[Double](-34.71, -37.86, -33.86)
+    val longitude = Array[Double](138.62, 144.76, 151.21)
+    val elevation = Array[Double](17, 20, 39)
+    
+    
+    val dates = Array[Double](1467243000, 1467313200, 1467313200)
+
+    for (i <- 0 to 0) {
+      whatMightTheWeatherBee(sc,locations(i), latitudes(i), longitude(i), elevation(i), dates(i))
+    }
+     println(System.currentTimeMillis())
+
+  }
+
+  def whatMightTheWeatherBee(sc:SparkContext,location: String, lat: Double, long: Double, elev: Double, date: Double): String = {
+
+    val filename = "data/" + location + ".txt"
+    val lines = Source.fromFile(filename).getLines().toArray
+
+    val temp = predictItem(sc,lines, lat, long, elev, date, "Temprature", 6)
+    val humidity = predictItem(sc,lines, lat, long, elev, date, "Humidity", 7)
+    val pressure = predictItem(sc,lines, lat, long, elev, date, "Pressure", 8)
+    val rain = predictItem(sc,lines, lat, long, elev, date, "Rain", 9)
+
+    val weatherType = predictWeatherType(temp,rain)
+    
+    println(location.toUpperCase()+"|"+lat+"|"+long+"|"+elev+"|"+new Date(date.toLong)+"|"+weatherType+"|"+temp+"|"+humidity+"|"+pressure+"|"+rain)
+    
+    return location
+
+  }
+
+  def predictItem(sc:SparkContext,lines: Array[String], lat: Double, long: Double, elev: Double, date: Double, parameterName: String, index: Int): Double = {
+  
+    val algo = new LinearRegressionWithSGD()
+    algo.optimizer.
+  setNumIterations(500).
+  setStepSize(0.1)
+  
+  val maxVal =  lines.map{
+      x => x.split(",")(index).toDouble
+    }.max
+    
+   val maxDate = lines.map{
+      x => x.split(",")(1).toDouble
+    }.max 
+
+    val labeledPoints = lines.map {
+      line=> {
+        val interest = line.split(",")(index).toDouble
+        LabeledPoint(interest,Vectors.dense(date/maxDate))
+      }
+    }
+    
+   val data = sc.parallelize(labeledPoints)
+    val splits = data randomSplit Array(0.8, 0.2)
+
+		val training = splits(0) cache
+		val test = splits(1) cache
+		
+		val model = algo run training
+		val prediction = model predict (test map (_ features))
+
+		val predictionAndLabel = prediction zip (test map (_ label))
+    
+   //predictionAndLabel.foreach((result) => println(s"predicted label: ${result._1}, actual label: ${result._2}"))
+   
+   val predictionResult = predictionAndLabel.take(1)
+   
+    return predictionResult(0)._1
+  }
+
+  def predictWeatherType(temp: Double, rain: Double): String = {
+    if (temp <= 4.00 && rain > 3.00)
+      "Hailstorm"
+    else if (temp <= 4.00)
+      "Snow"
+    else if (rain > 10.00)
+      "Thunderstorms"
+    else if (rain > 0.00)
+      "Rainy"
+    else if (temp > 20.00)
+      "Sunny"
+    else if (temp > 30.00)
+      "Hot"
+    else
+      "Clear"
+  }
+
+}

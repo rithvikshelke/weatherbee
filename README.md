@@ -1,5 +1,5 @@
 # WEATHERBEE
-Weather Prediction app
+Weather Prediction app using Linear Regression SGD using SPARK-MLLIB
 
 # INFO
 The weather dumps have been taken from  - https://www.wunderground.com

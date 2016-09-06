@@ -32,27 +32,33 @@ object WeatherBeeApp {
       DateUtil.getRandomTimeStamp()
     })
 
-    //The list of weatherVO is stored in the result
-    val result = for (i <- 0 to cityVOCollection.length - 1)
-    // method to generate weather test data
-      yield generateWeatherTestData(cityVOCollection(i), randomTimeStamps(i))
+    val w = new PrintWriter("Results.txt")
+    w.print("") // Clean up the file
 
-    val pw = new PrintWriter(new File("Results.txt"))
 
-    result.map(x => {
-      pw.println(x.cityDetails.cityCode + "|" + x.cityDetails.latitude + "|" + x.cityDetails.longitude + "|" + x.timestamp + "|"
-        + x.cityDetails.elevation + "|" + x.weatherType + "|" + x.temperature + "|" + x.dewPoint + "|" + x.humidity + "|"
-        + x.precipitation + "|" + x.seaLevelPressure + "|" + x.visibility
-      )
+    randomTimeStamps.map(x=> {
+      //The list of weatherVO is stored in the result
+      val result = for (i <- cityVOCollection.indices)
+      // method to generate weather test data
+        yield generateWeatherTestData(cityVOCollection(i), x)
+
+      result.map(x => {
+        w.append(x.cityDetails.cityCode + "|" + x.cityDetails.latitude + "|" + x.cityDetails.longitude + "|" + x.timestamp + "|"
+          + x.cityDetails.elevation + "|" + x.weatherType + "|" + "%2.2f".format(x.temperature) + "|" + "%2.2f".format(x.dewPoint) + "|" + "%2.2f".format(x.humidity) + "|"
+          + "%3.2f".format(x.precipitation) + "|" + x.seaLevelPressure + "|" + "%2.2f".format(x.visibility) + "\n"
+        )
+      })
+
+
     })
-    pw.close()
+    w.close()
   }
 
   /**
     * The method used to generate test data for weather
     *
-    * @param cityVO
-    * @param timestamp
+    * @param cityVO - value object containing the attributes of the city
+    * @param timestamp - timestamp as a string
     * @return WeatherVO
     */
   def generateWeatherTestData(cityVO: CityVO, timestamp: String): WeatherVO = {
@@ -73,7 +79,7 @@ object WeatherBeeApp {
   /**
     * The method gets the season index based on the month
     *
-    * @param month
+    * @param month - Month of the year
     * @return seasonIndex
     */
   def getSeasonIndexFromMonth(month: String): Int = {
